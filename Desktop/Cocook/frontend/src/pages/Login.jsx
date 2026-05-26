@@ -1,8 +1,13 @@
 import React, { useState } from "react";
 import { GoogleLogin } from "@react-oauth/google";
 
+// ================= API URL =================
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL || "http://13.60.13.36:8000";
+  import.meta.env.VITE_API_URL ||
+  "http://13.60.13.36:8000";
+
+// ===========================================
 
 export default function Login() {
 
@@ -104,6 +109,7 @@ export default function Login() {
       if (isSignUp) {
 
         body.name = name;
+
         body.bio = bio;
 
         body.experience_level =
@@ -229,14 +235,16 @@ export default function Login() {
 
     <main className="w-full min-h-screen flex flex-col items-center justify-center px-4 bg-[#f7f3ed]">
 
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg">
 
         <div className="text-center mb-8">
 
-          <h1 className="text-5xl font-bold mb-3">
+          <h1 className="text-4xl font-bold mb-3">
+
             {isSignUp
               ? "Create Account"
               : "Welcome Back, Chef"}
+
           </h1>
 
           <p className="text-gray-600">
@@ -338,6 +346,7 @@ export default function Login() {
               : "Verify OTP"}
 
           </button>
+
         </form>
 
         {step === 1 && !isSignUp && (
