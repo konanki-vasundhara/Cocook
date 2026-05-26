@@ -1,4 +1,3 @@
-```javascript id="p8x4mq"
 import React, {
   createContext,
   useContext,
@@ -11,7 +10,7 @@ const AppContext = createContext();
 // ================= ENV VARIABLES =================
 
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL;
+  import.meta.env.VITE_API_URL;
 
 const WS_BASE_URL =
   API_BASE_URL.replace("http", "ws");
@@ -23,6 +22,7 @@ export function AppProvider({ children }) {
   // ================= USER =================
 
   const [user, setUser] = useState(() => {
+
     const savedUser =
       localStorage.getItem("cocook_user");
 
@@ -163,6 +163,7 @@ export function AppProvider({ children }) {
   useEffect(() => {
 
     if (user) {
+
       fetchData();
     }
 
@@ -200,7 +201,7 @@ export function AppProvider({ children }) {
         message
       );
 
-      // Refresh data when updates arrive
+      // Refresh data automatically
       fetchData();
     };
 
@@ -222,6 +223,7 @@ export function AppProvider({ children }) {
     };
 
     return () => {
+
       ws.close();
     };
 
@@ -395,4 +397,3 @@ export function useAppContext() {
 
   return useContext(AppContext);
 }
-```
