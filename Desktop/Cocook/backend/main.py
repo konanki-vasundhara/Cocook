@@ -1,6 +1,6 @@
 # http://localhost:5173/assistantfrom fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.middleware.cors import CORSMiddleware
+#from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from database import engine, get_db, Base
 import models, schemas, auth
@@ -13,6 +13,24 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# CORS Middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Routes
+@app.get("/")
+def home():
+    return {"message": "Backend Running"}
 
 # Robust schema verification and dynamic re-initialization
 from sqlalchemy import inspect
