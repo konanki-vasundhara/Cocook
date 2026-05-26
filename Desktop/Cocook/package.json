@@ -1,0 +1,8 @@
+{
+  "name": "cocook-root",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "install": "npm --prefix frontend install"
+  }
+}

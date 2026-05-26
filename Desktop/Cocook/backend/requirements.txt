@@ -1,0 +1,10 @@
+fastapi
+uvicorn
+sqlalchemy
+psycopg2-binary
+python-dotenv
+pyjwt
+passlib
+google-auth
+pydantic
+pydantic-settings

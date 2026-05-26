@@ -1,0 +1,61 @@
+@import "tailwindcss";
+@config "../tailwind.config.js";
+
+
+@layer base {
+  body {
+    min-height: max(884px, 100dvh);
+  }
+}
+
+@layer components {
+  .neumorphic-lift {
+    background: #fdf9ef;
+    box-shadow: 6px 6px 12px #e3dfd7, -6px -6px 12px #ffffff;
+  }
+  .neumorphic-inset {
+    background: #fdf9ef;
+    box-shadow: inset 4px 4px 8px #e3dfd7, inset -4px -4px 8px #ffffff;
+  }
+  .neumorphic-btn {
+    background: #9f4118;
+    box-shadow: 4px 4px 10px rgba(159, 65, 24, 0.3), -4px -4px 10px rgba(255, 255, 255, 0.8);
+  }
+  .neumorphic-icon-btn {
+    background: #fdf9ef;
+    box-shadow: 3px 3px 6px #e3dfd7, -3px -3px 6px #ffffff;
+  }
+  .neumorphic-icon-btn:active {
+    box-shadow: inset 2px 2px 5px #e3dfd7, inset -2px -2px 5px #ffffff;
+  }
+  .neumorphic-pill {
+    box-shadow: 4px 4px 10px rgba(138, 114, 106, 0.1), -4px -4px 10px rgba(255, 255, 255, 0.8);
+  }
+  .glass-card, .glass-panel {
+    backdrop-filter: blur(20px);
+    background: rgba(253, 249, 239, 0.4);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  .neumorphic-pressed {
+    box-shadow: inset 4px 4px 8px rgba(0, 0, 0, 0.05), inset -4px -4px 8px rgba(255, 255, 255, 0.8);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .steam-graphic {
+    filter: blur(2px);
+    opacity: 0.6;
+  }
+}
+
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
