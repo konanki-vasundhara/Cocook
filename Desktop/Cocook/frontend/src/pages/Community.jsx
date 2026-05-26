@@ -22,7 +22,13 @@ export default function Community() {
       const token = localStorage.getItem('cocook_token');
       if (!token) return;
       try {
-        const res = await fetch(`http://localhost:8000/api/friends/status?token=${token}`);
+        const API_BASE_URL =
+  import.meta.env.VITE_API_URL ||
+  "http://13.60.13.36:8000";
+
+const res = await fetch(
+  `${API_BASE_URL}/api/friends/status?token=${token}`
+);
         if (res.ok) {
           const status = await res.json();
           setOnlineStatus(status);
