@@ -9,8 +9,11 @@ const AppContext = createContext();
 
 // ================= ENV VARIABLES =================
 
+// Uses .env value if available,
+// otherwise falls back to your EC2 backend URL
+
 const API_BASE_URL =
-  import.meta.env.VITE_API_URL;
+  import.meta.env.VITE_API_URL || "http://13.60.13.36:8000";
 
 const WS_BASE_URL =
   API_BASE_URL.replace("http", "ws");
@@ -201,7 +204,7 @@ export function AppProvider({ children }) {
         message
       );
 
-      // Refresh data automatically
+      // Auto refresh when websocket updates arrive
       fetchData();
     };
 
