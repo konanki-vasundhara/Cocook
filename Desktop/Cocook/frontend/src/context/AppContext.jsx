@@ -1,331 +1,218 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState
+} from "react";
+
+import {
+  API_BASE_URL,
+  WS_BASE_URL
+} from "../config";
 
 const AppContext = createContext();
 
-// API URL from .env
-const API = import.meta.env.VITE_API_URL;
-
-// WebSocket URL
-const WS_URL = API.replace('http', 'ws');
-
 export function AppProvider({ children }) {
 
-  // Load user from local storage
   const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('cocook_user');
-    return savedUser ? JSON.parse(savedUser) : null;
+    try {
+      const saved = localStorage.getItem("cocook_user");
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
   });
 
   const [communityPosts, setCommunityPosts] = useState([]);
   const [feedPosts, setFeedPosts] = useState([]);
   const [stories, setStories] = useState([]);
-  const [pendingRequests, setPendingRequests] = useState([]);
-  const [sentRequests, setSentRequests] = useState([]);
   const [friends, setFriends] = useState([]);
   const [socket, setSocket] = useState(null);
 
-  // Fetch initial data
+  const token = localStorage.getItem("cocook_token");
+
+  // ================= FETCH DATA =================
+
   const fetchData = async () => {
-    const token = localStorage.getItem('cocook_token');
+
     if (!token) return;
 
     try {
 
-      // Feed
-      const feedRes = await fetch(`${API}/api/feed?token=${token}`);
+      const [
+        feedRes,
+        communityRes,
+        storiesRes,
+        friendsRes
+      ] = await Promise.all([
+        fetch(`${API_BASE_URL}/api/feed?token=${token}`),
+        fetch(`${API_BASE_URL}/api/community?token=${token}`),
+        fetch(`${API_BASE_URL}/api/stories?token=${token}`),
+        fetch(`${API_BASE_URL}/api/friends/list?token=${token}`)
+      ]);
+
+      // FEED
       if (feedRes.ok) {
         const data = await feedRes.json();
 
-        setFeedPosts(data.map(p => ({
-          id: p.id,
-          title: p.title,
-          content: p.content,
-          image: p.image_url || 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800',
-          file_type: p.file_type || 'image',
-          filter_style: p.filter_style || '',
-          tags: p.tags ? p.tags.split(',') : [],
-          likes: p.likes,
-          comments: p.comments,
-          time: p.time_estimate || '15 mins',
-          author: p.author.name,
-          authorAvatar: p.author.avatar || '',
-          created_at: p.created_at
-        })));
+        setFeedPosts(Array.isArray(data) ? data : []);
       }
 
-      // Community
-      const commRes = await fetch(`${API}/api/community?token=${token}`);
-      if (commRes.ok) {
-        const data = await commRes.json();
+      // COMMUNITY
+      if (communityRes.ok) {
+        const data = await communityRes.json();
 
-        setCommunityPosts(data.map(p => ({
-          id: p.id,
-          author: p.author.name,
-          authorAvatar: p.author.avatar || '',
-          time: new Date(p.created_at).toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          }),
-          text: p.content,
-          likes: p.likes,
-          comments: p.comments,
-          group: 'The Sizzle Crew'
-        })));
+        setCommunityPosts(Array.isArray(data) ? data : []);
       }
 
-      // Stories
-      const storyRes = await fetch(`${API}/api/stories?token=${token}`);
-      if (storyRes.ok) {
-        const data = await storyRes.json();
-        setStories(data);
+      // STORIES
+      if (storiesRes.ok) {
+        const data = await storiesRes.json();
+
+        setStories(Array.isArray(data) ? data : []);
       }
 
-      // Pending Requests
-      const reqRes = await fetch(`${API}/api/friends/pending?token=${token}`);
-      if (reqRes.ok) {
-        const data = await reqRes.json();
-        setPendingRequests(data);
-      }
-
-      // Sent Requests
-      const sentRes = await fetch(`${API}/api/friends/sent?token=${token}`);
-      if (sentRes.ok) {
-        const data = await sentRes.json();
-        setSentRequests(data);
-      }
-
-      // Friends
-      const friendsRes = await fetch(`${API}/api/friends/list?token=${token}`);
+      // FRIENDS
       if (friendsRes.ok) {
         const data = await friendsRes.json();
-        setFriends(data);
+
+        setFriends(Array.isArray(data) ? data : []);
       }
 
-    } catch (e) {
-      console.warn("Error fetching data:", e);
+    } catch (err) {
+      console.error("Fetch error:", err);
     }
   };
 
   useEffect(() => {
-    if (user) {
-      fetchData();
-    }
+    fetchData();
   }, [user]);
 
-  // WebSocket
+  // ================= WEBSOCKET =================
+
   useEffect(() => {
 
-    const token = localStorage.getItem('cocook_token');
+    if (!token || !user) return;
+
+    let ws;
+
+    try {
+
+      ws = new WebSocket(
+        `${WS_BASE_URL}/ws?token=${token}`
+      );
+
+      ws.onopen = () => {
+        console.log("WS Connected");
+        setSocket(ws);
+      };
+
+      ws.onmessage = (event) => {
+
+        try {
+
+          const message = JSON.parse(event.data);
+
+          if (message.action === "new_post") {
+            setCommunityPosts(prev => [
+              message.data,
+              ...prev
+            ]);
+          }
+
+          if (message.action === "new_feed_post") {
+            setFeedPosts(prev => [
+              message.data,
+              ...prev
+            ]);
+          }
+
+        } catch (e) {
+          console.error("WS parse error:", e);
+        }
+      };
+
+      ws.onerror = (e) => {
+        console.error("WebSocket Error", e);
+      };
+
+    } catch (err) {
+      console.error("WS init failed:", err);
+    }
+
+    return () => {
+      if (ws) ws.close();
+    };
+
+  }, [user]);
+
+  // ================= POSTS =================
+
+  const addCommunityPost = async (post) => {
 
     if (!token) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws?token=${token}`);
-
-    ws.onopen = () => {
-      console.log("WebSocket Connected");
-      setSocket(ws);
-    };
-
-    ws.onmessage = (event) => {
-
-      const message = JSON.parse(event.data);
-
-      if (message.action === 'new_post') {
-
-        const p = message.data;
-
-        setCommunityPosts(prev => [
-          {
-            id: p.id,
-            author: p.author.name,
-            authorAvatar: p.author.avatar || '',
-            time: new Date(p.created_at).toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            }),
-            text: p.content,
-            likes: p.likes,
-            comments: p.comments,
-            group: 'The Sizzle Crew'
-          },
-          ...prev
-        ]);
-
-      } else if (message.action === 'new_feed_post') {
-
-        const p = message.data;
-
-        setFeedPosts(prev => [
-          {
-            id: p.id,
-            title: p.title,
-            content: p.content,
-            image: p.image_url || '',
-            file_type: p.file_type || 'image',
-            filter_style: p.filter_style || '',
-            tags: p.tags ? p.tags.split(',') : [],
-            likes: p.likes,
-            comments: p.comments,
-            time: p.time_estimate || '15 mins',
-            author: p.author.name,
-            authorAvatar: p.author.avatar || '',
-            created_at: p.created_at
-          },
-          ...prev
-        ]);
-
-      } else if (message.action === 'new_story') {
-
-        const s = message.data;
-        setStories(prev => [s, ...prev]);
-
-      } else if (message.action === 'delete_story') {
-
-        const deletedId = message.data.id;
-        setStories(prev => prev.filter(st => st.id !== deletedId));
-
-      } else if (
-        message.action === 'friend_request_received' ||
-        message.action === 'friend_request_accepted'
-      ) {
-
-        fetchData();
-
-      } else if (message.action === 'co_cook_event') {
-
-        const ev = new CustomEvent('co_cook_message', {
-          detail: message
-        });
-
-        window.dispatchEvent(ev);
-
-      } else if (message.action === 'dm_message') {
-
-        const ev = new CustomEvent('dm_message', {
-          detail: message
-        });
-
-        window.dispatchEvent(ev);
-      }
-    };
-
-    ws.onerror = (err) => {
-      console.error("WebSocket Error:", err);
-    };
-
-    ws.onclose = () => {
-      console.log("WebSocket Closed");
-    };
-
-    return () => {
-      ws.close();
-      setSocket(null);
-    };
-
-  }, [user]);
-
-  // Add Community Post
-  const addCommunityPost = async (post) => {
-
-    const token = localStorage.getItem('cocook_token');
-
-    if (!token) return alert('Please login first!');
-
     try {
 
-      await fetch(`${API}/api/community?token=${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          content: post.text
-        })
-      });
+      await fetch(
+        `${API_BASE_URL}/api/community?token=${token}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            content: post.text
+          })
+        }
+      );
 
-    } catch (e) {
-      console.warn("Backend down.");
-    }
-  };
-
-  // Add Feed Post
-  const addFeedPost = async (recipe) => {
-
-    const token = localStorage.getItem('cocook_token');
-
-    if (!token) {
-      alert('Please login first!');
-      return false;
-    }
-
-    try {
-
-      const res = await fetch(`${API}/api/feed?token=${token}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          title: recipe.title,
-          content: recipe.content,
-          image_url: recipe.image,
-          file_type: recipe.file_type || 'image',
-          filter_style: recipe.filter_style || '',
-          tags: recipe.tags.join(','),
-          time_estimate: recipe.time
-        })
-      });
-
-      if (res.ok) {
-        fetchData();
-        return true;
-      }
-
-      return false;
+      fetchData();
 
     } catch (e) {
       console.error(e);
-      return false;
     }
   };
 
-  // Search Users
-  const searchUsers = async (query) => {
+  const likeCommunityPost = (id) => {
 
-    const token = localStorage.getItem('cocook_token');
+    setCommunityPosts(prev =>
+      prev.map(post =>
+        post.id === id
+          ? {
+              ...post,
+              likes: (post.likes || 0) + 1
+            }
+          : post
+      )
+    );
+  };
 
-    if (!token) return [];
+  const sendWsMessage = (msg) => {
 
-    try {
-
-      const res = await fetch(`${API}/api/users/search?token=${token}&query=${query}`);
-
-      if (res.ok) {
-        return await res.json();
-      }
-
-    } catch (e) {
-      console.warn(e);
+    if (
+      socket &&
+      socket.readyState === WebSocket.OPEN
+    ) {
+      socket.send(JSON.stringify(msg));
     }
-
-    return [];
   };
 
   return (
-    <AppContext.Provider value={{
-      user,
-      setUser,
-      communityPosts,
-      feedPosts,
-      stories,
-      pendingRequests,
-      sentRequests,
-      friends,
-      addCommunityPost,
-      addFeedPost,
-      searchUsers,
-      refreshData: fetchData
-    }}>
+    <AppContext.Provider
+      value={{
+        user,
+        setUser,
+        communityPosts,
+        feedPosts,
+        stories,
+        friends,
+        addCommunityPost,
+        likeCommunityPost,
+        sendWsMessage,
+        refreshData: fetchData
+      }}
+    >
       {children}
     </AppContext.Provider>
   );
