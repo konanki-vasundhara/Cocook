@@ -2,7 +2,14 @@ import React, { createContext, useContext, useState, useEffect } from 'react';
 
 const AppContext = createContext();
 
+// API URL from .env
+const API = import.meta.env.VITE_API_URL;
+
+// WebSocket URL
+const WS_URL = API.replace('http', 'ws');
+
 export function AppProvider({ children }) {
+
   // Load user from local storage
   const [user, setUser] = useState(() => {
     const savedUser = localStorage.getItem('cocook_user');
@@ -23,10 +30,12 @@ export function AppProvider({ children }) {
     if (!token) return;
 
     try {
-      // 1. Fetch Feed
-      const feedRes = await fetch(`http://localhost:8000/api/feed?token=${token}`);
+
+      // Feed
+      const feedRes = await fetch(`${API}/api/feed?token=${token}`);
       if (feedRes.ok) {
         const data = await feedRes.json();
+
         setFeedPosts(data.map(p => ({
           id: p.id,
           title: p.title,
@@ -39,20 +48,24 @@ export function AppProvider({ children }) {
           comments: p.comments,
           time: p.time_estimate || '15 mins',
           author: p.author.name,
-          authorAvatar: p.author.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBr-R4CUdrwT8T69eJzjL3kOJCtwgE61SMjIlBA2ELGMi67xzfpqpK1X7j0Sri2YAZMbNbIIHW5W2hRV0X7fhHOhNPJ5iUQc9GWclGEx3yLL4aRG3Ut7hqS7F_Y2MRjiJvLX5ufk9-OhKZritSsseR4D5VuYnfi_9JWltntCiku230HZNm8z3HVn9jGVmgmv-XpdaXiMXCCgiIayaOGWoJFLwsL8xwOF3LYvzD2VznFVPaMXdsCrY8Y-b4SEVgDiRzwG089Oorpsdfv',
+          authorAvatar: p.author.avatar || '',
           created_at: p.created_at
         })));
       }
 
-      // 2. Fetch Community Posts
-      const commRes = await fetch(`http://localhost:8000/api/community?token=${token}`);
+      // Community
+      const commRes = await fetch(`${API}/api/community?token=${token}`);
       if (commRes.ok) {
         const data = await commRes.json();
+
         setCommunityPosts(data.map(p => ({
           id: p.id,
           author: p.author.name,
-          authorAvatar: p.author.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBr-R4CUdrwT8T69eJzjL3kOJCtwgE61SMjIlBA2ELGMi67xzfpqpK1X7j0Sri2YAZMbNbIIHW5W2hRV0X7fhHOhNPJ5iUQc9GWclGEx3yLL4aRG3Ut7hqS7F_Y2MRjiJvLX5ufk9-OhKZritSsseR4D5VuYnfi_9JWltntCiku230HZNm8z3HVn9jGVmgmv-XpdaXiMXCCgiIayaOGWoJFLwsL8xwOF3LYvzD2VznFVPaMXdsCrY8Y-b4SEVgDiRzwG089Oorpsdfv',
-          time: new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          authorAvatar: p.author.avatar || '',
+          time: new Date(p.created_at).toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          }),
           text: p.content,
           likes: p.likes,
           comments: p.comments,
@@ -60,29 +73,29 @@ export function AppProvider({ children }) {
         })));
       }
 
-      // 3. Fetch Active Stories
-      const storyRes = await fetch(`http://localhost:8000/api/stories?token=${token}`);
+      // Stories
+      const storyRes = await fetch(`${API}/api/stories?token=${token}`);
       if (storyRes.ok) {
         const data = await storyRes.json();
         setStories(data);
       }
 
-      // 4. Fetch Pending Requests
-      const reqRes = await fetch(`http://localhost:8000/api/friends/pending?token=${token}`);
+      // Pending Requests
+      const reqRes = await fetch(`${API}/api/friends/pending?token=${token}`);
       if (reqRes.ok) {
         const data = await reqRes.json();
         setPendingRequests(data);
       }
 
-      // Fetch Sent Requests
-      const sentRes = await fetch(`http://localhost:8000/api/friends/sent?token=${token}`);
+      // Sent Requests
+      const sentRes = await fetch(`${API}/api/friends/sent?token=${token}`);
       if (sentRes.ok) {
         const data = await sentRes.json();
         setSentRequests(data);
       }
 
-      // 5. Fetch Friends
-      const friendsRes = await fetch(`http://localhost:8000/api/friends/list?token=${token}`);
+      // Friends
+      const friendsRes = await fetch(`${API}/api/friends/list?token=${token}`);
       if (friendsRes.ok) {
         const data = await friendsRes.json();
         setFriends(data);
@@ -99,27 +112,37 @@ export function AppProvider({ children }) {
     }
   }, [user]);
 
-  // Setup WebSocket for real-time updates
+  // WebSocket
   useEffect(() => {
+
     const token = localStorage.getItem('cocook_token');
+
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
-    
+    const ws = new WebSocket(`${WS_URL}/ws?token=${token}`);
+
     ws.onopen = () => {
+      console.log("WebSocket Connected");
       setSocket(ws);
     };
 
     ws.onmessage = (event) => {
+
       const message = JSON.parse(event.data);
+
       if (message.action === 'new_post') {
+
         const p = message.data;
+
         setCommunityPosts(prev => [
           {
             id: p.id,
             author: p.author.name,
-            authorAvatar: p.author.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBr-R4CUdrwT8T69eJzjL3kOJCtwgE61SMjIlBA2ELGMi67xzfpqpK1X7j0Sri2YAZMbNbIIHW5W2hRV0X7fhHOhNPJ5iUQc9GWclGEx3yLL4aRG3Ut7hqS7F_Y2MRjiJvLX5ufk9-OhKZritSsseR4D5VuYnfi_9JWltntCiku230HZNm8z3HVn9jGVmgmv-XpdaXiMXCCgiIayaOGWoJFLwsL8xwOF3LYvzD2VznFVPaMXdsCrY8Y-b4SEVgDiRzwG089Oorpsdfv',
-            time: new Date(p.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            authorAvatar: p.author.avatar || '',
+            time: new Date(p.created_at).toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            }),
             text: p.content,
             likes: p.likes,
             comments: p.comments,
@@ -127,14 +150,17 @@ export function AppProvider({ children }) {
           },
           ...prev
         ]);
+
       } else if (message.action === 'new_feed_post') {
+
         const p = message.data;
+
         setFeedPosts(prev => [
           {
             id: p.id,
             title: p.title,
             content: p.content,
-            image: p.image_url || 'https://images.unsplash.com/photo-1551183053-bf91a1d81141?w=800',
+            image: p.image_url || '',
             file_type: p.file_type || 'image',
             filter_style: p.filter_style || '',
             tags: p.tags ? p.tags.split(',') : [],
@@ -142,62 +168,103 @@ export function AppProvider({ children }) {
             comments: p.comments,
             time: p.time_estimate || '15 mins',
             author: p.author.name,
-            authorAvatar: p.author.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuBr-R4CUdrwT8T69eJzjL3kOJCtwgE61SMjIlBA2ELGMi67xzfpqpK1X7j0Sri2YAZMbNbIIHW5W2hRV0X7fhHOhNPJ5iUQc9GWclGEx3yLL4aRG3Ut7hqS7F_Y2MRjiJvLX5ufk9-OhKZritSsseR4D5VuYnfi_9JWltntCiku230HZNm8z3HVn9jGVmgmv-XpdaXiMXCCgiIayaOGWoJFLwsL8xwOF3LYvzD2VznFVPaMXdsCrY8Y-b4SEVgDiRzwG089Oorpsdfv',
+            authorAvatar: p.author.avatar || '',
             created_at: p.created_at
           },
           ...prev
         ]);
+
       } else if (message.action === 'new_story') {
+
         const s = message.data;
-        setStories(prev => [s, ...prev.filter(st => st.id !== s.id)]);
+        setStories(prev => [s, ...prev]);
+
       } else if (message.action === 'delete_story') {
+
         const deletedId = message.data.id;
         setStories(prev => prev.filter(st => st.id !== deletedId));
-      } else if (message.action === 'friend_request_received') {
+
+      } else if (
+        message.action === 'friend_request_received' ||
+        message.action === 'friend_request_accepted'
+      ) {
+
         fetchData();
-      } else if (message.action === 'friend_request_accepted') {
-        fetchData();
+
       } else if (message.action === 'co_cook_event') {
-        const ev = new CustomEvent('co_cook_message', { detail: message });
+
+        const ev = new CustomEvent('co_cook_message', {
+          detail: message
+        });
+
         window.dispatchEvent(ev);
+
       } else if (message.action === 'dm_message') {
-        const ev = new CustomEvent('dm_message', { detail: message });
+
+        const ev = new CustomEvent('dm_message', {
+          detail: message
+        });
+
         window.dispatchEvent(ev);
       }
+    };
+
+    ws.onerror = (err) => {
+      console.error("WebSocket Error:", err);
+    };
+
+    ws.onclose = () => {
+      console.log("WebSocket Closed");
     };
 
     return () => {
       ws.close();
       setSocket(null);
     };
+
   }, [user]);
 
+  // Add Community Post
   const addCommunityPost = async (post) => {
+
     const token = localStorage.getItem('cocook_token');
+
     if (!token) return alert('Please login first!');
 
     try {
-      await fetch(`http://localhost:8000/api/community?token=${token}`, {
+
+      await fetch(`${API}/api/community?token=${token}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ content: post.text })
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          content: post.text
+        })
       });
+
     } catch (e) {
       console.warn("Backend down.");
     }
   };
 
+  // Add Feed Post
   const addFeedPost = async (recipe) => {
+
     const token = localStorage.getItem('cocook_token');
+
     if (!token) {
       alert('Please login first!');
       return false;
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/api/feed?token=${token}`, {
+
+      const res = await fetch(`${API}/api/feed?token=${token}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json'
+        },
         body: JSON.stringify({
           title: recipe.title,
           content: recipe.content,
@@ -208,225 +275,54 @@ export function AppProvider({ children }) {
           time_estimate: recipe.time
         })
       });
+
       if (res.ok) {
         fetchData();
         return true;
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.error("Feed post failed:", res.status, errData);
-        alert(errData.detail || `Failed to post recipe (Status: ${res.status})`);
-        return false;
       }
+
+      return false;
+
     } catch (e) {
-      console.error("Feed post error:", e);
-      alert("Could not post recipe. Please check if the backend server is running.");
+      console.error(e);
       return false;
     }
   };
 
-  const askAiSuggestion = async (ingredients) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return null;
-    try {
-      const res = await fetch(`http://localhost:8000/api/ai/suggestion?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ingredients })
-      });
-      if (res.ok) {
-        return await res.json();
-      }
-    } catch (e) {
-      console.warn("AI suggestion failed:", e);
-    }
-    return null;
-  };
-
-  const likeCommunityPost = async (id) => {
-    setCommunityPosts(communityPosts.map(post => post.id === id ? {...post, likes: post.likes + 1} : post));
-  };
-
-  const sendFriendRequest = async (receiverId) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return;
-    // Optimistic UI state update: add a temp pending request to sentRequests
-    const tempReq = {
-      id: Date.now(),
-      sender_id: user.id,
-      receiver_id: receiverId,
-      status: "pending",
-      sender: user,
-      receiver: { id: receiverId }
-    };
-    setSentRequests(prev => [...prev, tempReq]);
-
-    try {
-      await fetch(`http://localhost:8000/api/friends/request?token=${token}&receiver_id=${receiverId}`, {
-        method: 'POST'
-      });
-      fetchData();
-    } catch (e) {
-      setSentRequests(prev => prev.filter(r => r.receiver_id !== receiverId));
-      console.warn(e);
-    }
-  };
-
-  const acceptFriendRequest = async (requestId) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return;
-
-    // Find the request to know who the friend is
-    const req = pendingRequests.find(r => r.id === requestId);
-    if (req) {
-      // Optimistically remove from pending, and add to friends list
-      setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-      if (!friends.some(f => f.id === req.sender.id)) {
-        setFriends(prev => [...prev, req.sender]);
-      }
-    }
-
-    try {
-      await fetch(`http://localhost:8000/api/friends/accept?token=${token}&request_id=${requestId}`, {
-        method: 'POST'
-      });
-      fetchData();
-    } catch (e) {
-      console.warn(e);
-      fetchData();
-    }
-  };
-
-  const rejectFriendRequest = async (requestId) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return;
-
-    // Optimistically remove from pending and sent
-    setPendingRequests(prev => prev.filter(r => r.id !== requestId));
-    setSentRequests(prev => prev.filter(r => r.id !== requestId));
-
-    try {
-      await fetch(`http://localhost:8000/api/friends/reject?token=${token}&request_id=${requestId}`, {
-        method: 'POST'
-      });
-      fetchData();
-    } catch (e) {
-      console.warn(e);
-      fetchData();
-    }
-  };
-
-  const removeFriend = async (friendId) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return;
-
-    // Optimistically remove friend from friends state
-    setFriends(prev => prev.filter(f => f.id !== friendId));
-
-    try {
-      await fetch(`http://localhost:8000/api/friends/remove?token=${token}&friend_id=${friendId}`, {
-        method: 'POST'
-      });
-      fetchData();
-    } catch (e) {
-      console.warn(e);
-      fetchData();
-    }
-  };
-
-  const sendWsMessage = (msg) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      socket.send(JSON.stringify(msg));
-      return true;
-    }
-    return false;
-  };
-
+  // Search Users
   const searchUsers = async (query) => {
+
     const token = localStorage.getItem('cocook_token');
+
     if (!token) return [];
+
     try {
-      const res = await fetch(`http://localhost:8000/api/users/search?token=${token}&query=${query}`);
+
+      const res = await fetch(`${API}/api/users/search?token=${token}&query=${query}`);
+
       if (res.ok) {
         return await res.json();
       }
+
     } catch (e) {
       console.warn(e);
     }
+
     return [];
-  };
-
-  const addStory = async (content, imageUrl, fileType = "image", filterStyle = "") => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) {
-      alert('Please login first!');
-      return false;
-    }
-    try {
-      const res = await fetch(`http://localhost:8000/api/stories?token=${token}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content, 
-          image_url: imageUrl, 
-          file_type: fileType, 
-          filter_style: filterStyle 
-        })
-      });
-      if (res.ok) {
-        fetchData();
-        return true;
-      } else {
-        const errData = await res.json().catch(() => ({}));
-        console.error("Story share failed:", res.status, errData);
-        alert(errData.detail || `Failed to share story (Status: ${res.status})`);
-        return false;
-      }
-    } catch (e) {
-      console.error("Story share error:", e);
-      alert("Could not share story. Please check if the backend server is running.");
-      return false;
-    }
-  };
-
-  const deleteStory = async (storyId) => {
-    const token = localStorage.getItem('cocook_token');
-    if (!token) return false;
-    try {
-      const res = await fetch(`http://localhost:8000/api/stories/${storyId}?token=${token}`, {
-        method: 'DELETE'
-      });
-      if (res.ok) {
-        setStories(prev => prev.filter(s => s.id !== storyId));
-        return true;
-      }
-    } catch (e) {
-      console.warn("Error deleting story:", e);
-    }
-    return false;
   };
 
   return (
     <AppContext.Provider value={{
-      user, 
-      setUser, 
-      communityPosts, 
-      addCommunityPost, 
-      likeCommunityPost,
+      user,
+      setUser,
+      communityPosts,
       feedPosts,
-      addFeedPost,
-      askAiSuggestion,
       stories,
-      addStory,
-      deleteStory,
       pendingRequests,
       sentRequests,
-      setSentRequests,
       friends,
-      sendFriendRequest,
-      acceptFriendRequest,
-      rejectFriendRequest,
-      removeFriend,
-      sendWsMessage,
+      addCommunityPost,
+      addFeedPost,
       searchUsers,
       refreshData: fetchData
     }}>
