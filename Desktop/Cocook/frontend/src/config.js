@@ -2,7 +2,7 @@
 
 // AWS EC2 Backend URL
 export const API_URL =
-  import.meta.env.VITE_API_URL || "http://YOUR_EC2_PUBLIC_IP:8000";
+  import.meta.env.VITE_API_URL || "http://13.60.53.4:8000";
 
 // WebSocket URL
 export const WS_URL =
