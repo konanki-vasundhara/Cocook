@@ -1,25 +1,39 @@
-// Centralized configuration — all environment variables in one place
-// In production, set these via your hosting platform's environment variables
-// Vite requires VITE_ prefix for client-side env vars
+// frontend/src/config.js
 
-// API_URL: Backend server URL
-// - Development: set VITE_API_URL=http://localhost:8000 in frontend/.env
-// - Production: set VITE_API_URL=https://your-api.onrender.com (or your backend URL)
-// - If empty/unset and running on same domain, uses relative URLs (empty string)
-export const API_URL = import.meta.env.VITE_API_URL || '';
+// Detect hostname dynamically
+const hostname =
+  typeof window !== 'undefined'
+    ? window.location.hostname
+    : 'localhost';
 
-// WS_URL: WebSocket server URL
-// - Development: set VITE_WS_URL=ws://localhost:8000 in frontend/.env  
-// - Production: set VITE_WS_URL=wss://your-api.onrender.com (note wss:// for HTTPS)
-// - If empty/unset, auto-derives from current page URL
-export const WS_URL = import.meta.env.VITE_WS_URL || deriveWebSocketUrl();
+// Backend API URL
+export const API_URL =
+  import.meta.env.VITE_API_URL ||
+  (hostname === 'localhost'
+    ? 'http://localhost:8000'
+    : `http://${hostname}:8000`);
 
-export const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+// WebSocket URL
+export const WS_URL =
+  import.meta.env.VITE_WS_URL ||
+  deriveWebSocketUrl();
 
-// Auto-derive WebSocket URL from current page location
-// Converts http://domain -> ws://domain, https://domain -> wss://domain
+// Google OAuth Client ID
+export const GOOGLE_CLIENT_ID =
+  import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
+
+// Auto-generate websocket URL
 function deriveWebSocketUrl() {
   if (typeof window === 'undefined') return '';
-  const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  return `${protocol}//${window.location.host}`;
+
+  const protocol =
+    window.location.protocol === 'https:'
+      ? 'wss:'
+      : 'ws:';
+
+  const hostname = window.location.hostname;
+
+  return hostname === 'localhost'
+    ? `${protocol}//localhost:8000`
+    : `${protocol}//${hostname}:8000`;
 }
