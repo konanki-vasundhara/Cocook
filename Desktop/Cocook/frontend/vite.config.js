@@ -15,7 +15,7 @@ sourcemap: false,
 minify: 'esbuild',
 target: 'es2020',
 
-```
+
 rollupOptions: {
   output: {
     manualChunks(id) {
@@ -25,7 +25,7 @@ rollupOptions: {
     },
   },
 },
-```
+
 
 },
 })
