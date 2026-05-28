@@ -1,4 +1,3 @@
-# http://localhost:5173/assistantfrom fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi import FastAPI, Depends, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -13,50 +12,35 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 import os
+from dotenv import load_dotenv
 
-# Robust schema verification and dynamic re-initialization
-from sqlalchemy import inspect
+load_dotenv()
 
-def init_db():
-    try:
-        inspector = inspect(engine)
-        tables = inspector.get_table_names()
-        outdated = False
-        
-        # Check recipe_posts table
-        if 'recipe_posts' in tables:
-            columns = [c['name'] for c in inspector.get_columns('recipe_posts')]
-            if 'file_type' not in columns or 'filter_style' not in columns:
-                outdated = True
-                
-        # Check stories table
-        if 'stories' in tables:
-            columns = [c['name'] for c in inspector.get_columns('stories')]
-            if 'file_type' not in columns or 'filter_style' not in columns:
-                outdated = True
-                
-        if outdated:
-            logging.warning("Outdated database schema detected (missing columns). Re-initializing database...")
-            Base.metadata.drop_all(bind=engine)
-            Base.metadata.create_all(bind=engine)
-            logging.info("Database schema successfully re-initialized with all new columns!")
-        else:
-            Base.metadata.create_all(bind=engine)
-    except Exception as e:
-        logging.error(f"Error during database schema verification: {e}")
-        Base.metadata.create_all(bind=engine)
-
-init_db()
+# Initialize database tables (safe — only creates missing tables, never drops)
+Base.metadata.create_all(bind=engine)
 
 app = FastAPI(title="CoCook Real-Time API")
 
+# CORS: In production, set ALLOWED_ORIGINS env var to your frontend URL(s)
+# Example: ALLOWED_ORIGINS=https://cocook.vercel.app,https://www.cocook.com
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_str:
+    allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+else:
+    allowed_origins = ["*"]  # Allow all in development when not configured
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, restrict to frontend URL
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# --- Health Check ---
+@app.get("/health")
+def health_check():
+    return {"status": "healthy", "service": "cocook-api"}
 
 # --- WebSocket Manager ---
 from typing import Dict, List, Optional
@@ -183,11 +167,13 @@ def send_otp(request: schemas.OTPRequest, db: Session = Depends(get_db)):
     if email_sent:
         return {"message": "OTP sent successfully to your email!", "real_email": True}
     else:
-        return {
-            "message": "OTP generated! (SMTP is not configured, please check backend console)", 
-            "mock_code_for_testing": otp_code,
+        response = {
+            "message": "OTP generated! (SMTP is not configured, please check backend console)",
             "real_email": False
         }
+        if os.getenv("DEBUG", "false").lower() == "true":
+            response["mock_code_for_testing"] = otp_code
+        return response
 
 @app.post("/auth/verify-otp", response_model=schemas.Token)
 def verify_otp(request: schemas.OTPVerify, db: Session = Depends(get_db)):
@@ -237,22 +223,15 @@ def verify_otp(request: schemas.OTPVerify, db: Session = Depends(get_db)):
 @app.post("/auth/google", response_model=schemas.Token)
 def google_auth(request: schemas.GoogleAuthRequest, db: Session = Depends(get_db)):
     try:
-        import jwt as pyjwt
-
-        # First try to verify with Google's library (production path)
+        # Verify Google token — production only uses verified tokens
         try:
             idinfo = id_token.verify_oauth2_token(
                 request.token, 
                 google_requests.Request()
             )
         except Exception as verify_err:
-            logging.warning(f"Google token verification failed (falling back to unverified decode): {verify_err}")
-            # Fallback: decode without signature verification for local development
-            try:
-                idinfo = pyjwt.decode(request.token, options={"verify_signature": False})
-            except Exception as decode_err:
-                logging.error(f"JWT decode also failed: {decode_err}")
-                raise HTTPException(status_code=400, detail=f"Could not decode Google token: {str(decode_err)}")
+            logging.error(f"Google token verification failed: {verify_err}")
+            raise HTTPException(status_code=400, detail="Invalid Google token. Please try again.")
         
         email = idinfo.get('email')
         if not email:
@@ -288,25 +267,9 @@ def get_current_user(token: str, db: Session):
     if not payload:
         return None
     user_id = payload.get("sub")
+    if not user_id:
+        return None
     u = db.query(models.User).filter(models.User.id == int(user_id)).first()
-    if not u:
-        try:
-            # Auto-recreate user in case of database re-init to prevent developer 401 lockouts
-            u = models.User(
-                id=int(user_id),
-                email="chef@cocook.com",
-                name="Master Chef",
-                avatar="https://lh3.googleusercontent.com/aida-public/AB6AXuBr-R4CUdrwT8T69eJzjL3kOJCtwgE61SMjIlBA2ELGMi67xzfpqpK1X7j0Sri2YAZMbNbIIHW5W2hRV0X7fhHOhNPJ5iUQc9GWclGEx3yLL4aRG3Ut7hqS7F_Y2MRjiJvLX5ufk9-OhKZritSsseR4D5VuYnfi_9JWltntCiku230HZNm8z3HVn9jGVmgmv-XpdaXiMXCCgiIayaOGWoJFLwsL8xwOF3LYvzD2VznFVPaMXdsCrY8Y-b4SEVgDiRzwG089Oorpsdfv",
-                bio="Curating flavors for the digital kitchen",
-                experience_level="Expert",
-                favorite_cuisine="Fusion",
-                auth_provider="email"
-            )
-            db.add(u)
-            db.commit()
-            db.refresh(u)
-        except Exception:
-            return None
     return u
 
 # --- Profile Routes ---
@@ -764,7 +727,7 @@ def get_active_stories(token: str, db: Session = Depends(get_db)):
         else:
             user_ids.append(f.sender_id)
             
-    cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(hours=24)
+    cutoff_time = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=24)
     
     return db.query(models.Story).filter(
         models.Story.user_id.in_(user_ids),
@@ -902,7 +865,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None, user_id: i
                         "action": "dm_message",
                         "sender_id": resolved_user_id,
                         "text": payload.get("text"),
-                        "created_at": datetime.datetime.utcnow().isoformat()
+                        "created_at": datetime.datetime.now(datetime.timezone.utc).isoformat()
                     }
                     await manager.send_personal_message(dm_payload, receiver_id)
             except Exception:

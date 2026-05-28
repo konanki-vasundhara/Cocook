@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { API_URL } from '../config';
 
 export default function Profile() {
   const { 
@@ -65,7 +66,7 @@ export default function Profile() {
     const token = localStorage.getItem('cocook_token');
     
     try {
-      const res = await fetch(`http://localhost:8000/api/profile?token=${token}`, {
+      const res = await fetch(`${API_URL}/api/profile?token=${token}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

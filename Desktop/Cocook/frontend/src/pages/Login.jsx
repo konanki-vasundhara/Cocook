@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { API_URL } from '../config';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -20,7 +21,7 @@ export default function Login() {
     setIsLoading(true);
     setMessage('');
     try {
-      const res = await fetch('http://localhost:8000/auth/send-otp', {
+      const res = await fetch(`${API_URL}/auth/send-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
@@ -54,7 +55,7 @@ export default function Login() {
         body.experience_level = experienceLevel;
         body.favorite_cuisine = favoriteCuisine;
       }
-      const res = await fetch('http://localhost:8000/auth/verify-otp', {
+      const res = await fetch(`${API_URL}/auth/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
@@ -78,7 +79,7 @@ export default function Login() {
     setIsLoading(true);
     setMessage('');
     try {
-      const res = await fetch('http://localhost:8000/auth/google', {
+      const res = await fetch(`${API_URL}/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: credentialResponse.credential })

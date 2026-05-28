@@ -2,7 +2,8 @@ const express = require('express');
 const cors = require('cors');
 
 const app = express();
-app.use(cors({ origin: 'http://localhost:5173' }));
+const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:5173,http://localhost:3000').split(',').map(o => o.trim());
+app.use(cors({ origin: allowedOrigins }));
 app.use(express.json());
 
 // --- Mock Database ---
@@ -103,7 +104,7 @@ app.post('/api/recipe/generate', (req, res) => {
     }, 2000);
 });
 
-const PORT = 8000;
-app.listen(PORT, () => {
+const PORT = process.env.PORT || 8000;
+app.listen(PORT, '0.0.0.0', () => {
     console.log(`Node Server running on port ${PORT}`);
 });

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useAppContext } from '../context/AppContext';
+import { API_URL } from '../config';
 
 export default function Community() {
   const { 
@@ -22,7 +23,7 @@ export default function Community() {
       const token = localStorage.getItem('cocook_token');
       if (!token) return;
       try {
-        const res = await fetch(`http://localhost:8000/api/friends/status?token=${token}`);
+        const res = await fetch(`${API_URL}/api/friends/status?token=${token}`);
         if (res.ok) {
           const status = await res.json();
           setOnlineStatus(status);

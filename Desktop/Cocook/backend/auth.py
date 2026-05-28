@@ -1,16 +1,27 @@
-from passlib.context import CryptContext
 import jwt
 import datetime
 import os
+import secrets
+import logging
+from dotenv import load_dotenv
 
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-here")
+load_dotenv()
+
+# SECRET_KEY must be set in production via environment variable
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    if os.getenv("ENVIRONMENT", "development") == "production":
+        raise RuntimeError("FATAL: SECRET_KEY environment variable is not set. Cannot start in production mode.")
+    else:
+        SECRET_KEY = secrets.token_hex(32)
+        logging.warning("SECRET_KEY not set — generated ephemeral key for development. Set SECRET_KEY env var for production.")
+
 ALGORITHM = "HS256"
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+ACCESS_TOKEN_EXPIRE_DAYS = int(os.getenv("ACCESS_TOKEN_EXPIRE_DAYS", "7"))
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.datetime.utcnow() + datetime.timedelta(days=7)
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=ACCESS_TOKEN_EXPIRE_DAYS)
     to_encode.update({"exp": expire})
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
     return encoded_jwt

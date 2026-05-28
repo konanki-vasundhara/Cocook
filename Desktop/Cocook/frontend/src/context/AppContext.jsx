@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { API_URL, WS_URL } from '../config';
 
 const AppContext = createContext();
 
@@ -24,7 +25,7 @@ export function AppProvider({ children }) {
 
     try {
       // 1. Fetch Feed
-      const feedRes = await fetch(`http://localhost:8000/api/feed?token=${token}`);
+      const feedRes = await fetch(`${API_URL}/api/feed?token=${token}`);
       if (feedRes.ok) {
         const data = await feedRes.json();
         setFeedPosts(data.map(p => ({
@@ -45,7 +46,7 @@ export function AppProvider({ children }) {
       }
 
       // 2. Fetch Community Posts
-      const commRes = await fetch(`http://localhost:8000/api/community?token=${token}`);
+      const commRes = await fetch(`${API_URL}/api/community?token=${token}`);
       if (commRes.ok) {
         const data = await commRes.json();
         setCommunityPosts(data.map(p => ({
@@ -61,28 +62,28 @@ export function AppProvider({ children }) {
       }
 
       // 3. Fetch Active Stories
-      const storyRes = await fetch(`http://localhost:8000/api/stories?token=${token}`);
+      const storyRes = await fetch(`${API_URL}/api/stories?token=${token}`);
       if (storyRes.ok) {
         const data = await storyRes.json();
         setStories(data);
       }
 
       // 4. Fetch Pending Requests
-      const reqRes = await fetch(`http://localhost:8000/api/friends/pending?token=${token}`);
+      const reqRes = await fetch(`${API_URL}/api/friends/pending?token=${token}`);
       if (reqRes.ok) {
         const data = await reqRes.json();
         setPendingRequests(data);
       }
 
       // Fetch Sent Requests
-      const sentRes = await fetch(`http://localhost:8000/api/friends/sent?token=${token}`);
+      const sentRes = await fetch(`${API_URL}/api/friends/sent?token=${token}`);
       if (sentRes.ok) {
         const data = await sentRes.json();
         setSentRequests(data);
       }
 
       // 5. Fetch Friends
-      const friendsRes = await fetch(`http://localhost:8000/api/friends/list?token=${token}`);
+      const friendsRes = await fetch(`${API_URL}/api/friends/list?token=${token}`);
       if (friendsRes.ok) {
         const data = await friendsRes.json();
         setFriends(data);
@@ -104,7 +105,7 @@ export function AppProvider({ children }) {
     const token = localStorage.getItem('cocook_token');
     if (!token) return;
 
-    const ws = new WebSocket(`ws://localhost:8000/ws?token=${token}`);
+    const ws = new WebSocket(`${WS_URL}/ws?token=${token}`);
     
     ws.onopen = () => {
       setSocket(ws);
@@ -177,7 +178,7 @@ export function AppProvider({ children }) {
     if (!token) return alert('Please login first!');
 
     try {
-      await fetch(`http://localhost:8000/api/community?token=${token}`, {
+      await fetch(`${API_URL}/api/community?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content: post.text })
@@ -195,7 +196,7 @@ export function AppProvider({ children }) {
     }
 
     try {
-      const res = await fetch(`http://localhost:8000/api/feed?token=${token}`, {
+      const res = await fetch(`${API_URL}/api/feed?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -228,7 +229,7 @@ export function AppProvider({ children }) {
     const token = localStorage.getItem('cocook_token');
     if (!token) return null;
     try {
-      const res = await fetch(`http://localhost:8000/api/ai/suggestion?token=${token}`, {
+      const res = await fetch(`${API_URL}/api/ai/suggestion?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ingredients })
@@ -261,7 +262,7 @@ export function AppProvider({ children }) {
     setSentRequests(prev => [...prev, tempReq]);
 
     try {
-      await fetch(`http://localhost:8000/api/friends/request?token=${token}&receiver_id=${receiverId}`, {
+      await fetch(`${API_URL}/api/friends/request?token=${token}&receiver_id=${receiverId}`, {
         method: 'POST'
       });
       fetchData();
@@ -286,7 +287,7 @@ export function AppProvider({ children }) {
     }
 
     try {
-      await fetch(`http://localhost:8000/api/friends/accept?token=${token}&request_id=${requestId}`, {
+      await fetch(`${API_URL}/api/friends/accept?token=${token}&request_id=${requestId}`, {
         method: 'POST'
       });
       fetchData();
@@ -305,7 +306,7 @@ export function AppProvider({ children }) {
     setSentRequests(prev => prev.filter(r => r.id !== requestId));
 
     try {
-      await fetch(`http://localhost:8000/api/friends/reject?token=${token}&request_id=${requestId}`, {
+      await fetch(`${API_URL}/api/friends/reject?token=${token}&request_id=${requestId}`, {
         method: 'POST'
       });
       fetchData();
@@ -323,7 +324,7 @@ export function AppProvider({ children }) {
     setFriends(prev => prev.filter(f => f.id !== friendId));
 
     try {
-      await fetch(`http://localhost:8000/api/friends/remove?token=${token}&friend_id=${friendId}`, {
+      await fetch(`${API_URL}/api/friends/remove?token=${token}&friend_id=${friendId}`, {
         method: 'POST'
       });
       fetchData();
@@ -345,7 +346,7 @@ export function AppProvider({ children }) {
     const token = localStorage.getItem('cocook_token');
     if (!token) return [];
     try {
-      const res = await fetch(`http://localhost:8000/api/users/search?token=${token}&query=${query}`);
+      const res = await fetch(`${API_URL}/api/users/search?token=${token}&query=${query}`);
       if (res.ok) {
         return await res.json();
       }
@@ -362,7 +363,7 @@ export function AppProvider({ children }) {
       return false;
     }
     try {
-      const res = await fetch(`http://localhost:8000/api/stories?token=${token}`, {
+      const res = await fetch(`${API_URL}/api/stories?token=${token}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -392,7 +393,7 @@ export function AppProvider({ children }) {
     const token = localStorage.getItem('cocook_token');
     if (!token) return false;
     try {
-      const res = await fetch(`http://localhost:8000/api/stories/${storyId}?token=${token}`, {
+      const res = await fetch(`${API_URL}/api/stories/${storyId}?token=${token}`, {
         method: 'DELETE'
       });
       if (res.ok) {
