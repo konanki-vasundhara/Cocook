@@ -26,8 +26,8 @@ app = FastAPI(title="CoCook Real-Time API")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 # ---------------- CORS ----------------
-allow_origins_str = os.getenv("ALLOWED_ORIGINS", "")
-allow_origins = (
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+allowed_origins = (
     [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
     if allowed_origins_str else ["*"]
 )
