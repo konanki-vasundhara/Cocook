@@ -34,12 +34,10 @@ allowed_origins = (
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins = [
-    "http://localhost:5173",
-    "http://172.31.44.161:5173",
-    "http://13.63.237.243:5173",
-    "http://13.63.237.243",
-],
+    allow_origins=[
+        "http://13.63.237.243:3000",
+        "http://localhost:3000"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
