@@ -26,15 +26,15 @@ app = FastAPI(title="CoCook Real-Time API")
 GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID")
 
 # ---------------- CORS ----------------
-allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
-allowed_origins = (
+allow_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+allow_origins = (
     [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
     if allowed_origins_str else ["*"]
 )
 
 app.add_middleware(
     CORSMiddleware,
-    allowed_origins = [
+    allow_origins = [
     "http://localhost:5173",
     "http://172.31.44.161:5173",
     "http://13.63.237.243:5173",
